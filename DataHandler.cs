@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Data;
 using System.Data.OleDb;
+using EncryptString;
 using System.Data.SqlClient;
-
+using System.Diagnostics;
 namespace New_Wrapper
 {
 
     /// <summary>
-    /// BOB Handles the connecting to and updating of data using OLE
+    /// Handles the connecting to and updating of data using OLE
     /// </summary>
     /// //<remarks>The default instance of the data handler only connects and updates a single table. For datasets containing
     /// multiple updateable tables use the MultiHandler</remarks>
@@ -31,30 +32,36 @@ namespace New_Wrapper
 
         #endregion
 
-        #region Genric Excel
-
-        /// <summary>
-        /// Returns the data in an Excel sheet as a data table
-        /// </summary>
-        /// <param name="pathToExcelFile">The path to the file to be converted</param>
-        /// <param name="sheetName">The name of the sheet where the data is held</param>
-        /// <param name="includesHeaderRow">Whether the data has a header row showing the column names</param>
-        /// <returns></returns>
-        /// <remarks>The method uses the ACE provider and should work for all Excel files</remarks>
-        public DataTable ReturnExcelSheetAsDataTable(string pathToExcelFile, string sheetName, Boolean includesHeaderRow)
-        {
-            string header = "No";
-            if (includesHeaderRow == true) header = "Yes";
-            string connection = "Provider=Microsoft.JET.OLEDB.4.0;Data Source =" + pathToExcelFile + ";Extended Properties = \"Excel 8.0;HDR =" + header + ";IMEX=1\"";
-            string query = "SELECT * FROM [" + sheetName + "$]";
-            New_Wrapper.DataHandler myHandler = new New_Wrapper.DataHandler(connection, query);
-            return myHandler.CreateDataset().Tables[0];
-        }
-
-        #endregion
-
         #region SQL stored procedures
+        //BOB TODO
+        /// <summary>
+        /// Action a stored procedure with associated parameters
+        /// </summary>
+        /// <param name="parameters">A list of the parameters to apply</param>
+        /// <param name="connectionString">the connection string for the SQL data source</param>
+        /// <param name="storedProcedureName">The name of the stored procedure</param>
+        /*public void RunStoredProcedureUpdate(ref DataTable dt,string connectionString, string storedProcedureName)
+        {
+            SqlConnection pvConnection;
+            pvConnection = new SqlConnection(connectionString);
+            SqlCommand scomm = new SqlCommand(storedProcedureName,pvConnection);
+            scomm.CommandType = CommandType.StoredProcedure;
+            
+            pvConnection.Open();
 
+            foreach (DataRow dr in dt.Rows)
+            {
+                scomm.Parameters.Clear();
+
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    scomm.Parameters.AddWithValue("@" +dc.ColumnName.ToString(), dr[dc.ColumnName].ToString());
+                }
+                scomm.ExecuteNonQuery();
+            }
+
+            pvConnection.Close();
+        }*/
         /// <summary>
         /// Action a stored procedure with associated parameters
         /// </summary>
@@ -63,37 +70,76 @@ namespace New_Wrapper
         /// <param name="storedProcedureName">The name of the stored procedure</param>
         public void RunStoredProcedure(ref List<SqlParameter> parameters, string connectionString, string storedProcedureName)
         {
+            DataTable dt = new DataTable();
+            dt.Columns.Add("Action");
+            dt.Columns.Add("Time");
+            dt.TableName = "Stats";
+           
             SqlConnection pvConnection;
             try
             {
+                DataRow dr = dt.NewRow();
+                dr["Action"] = "Before open";
+                dr["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+                dt.Rows.Add(dr);
                 pvConnection = new SqlConnection(connectionString);
+                DataRow dr1 = dt.NewRow();
+                dr1["Action"] = "After open";
+                dr1["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+                dt.Rows.Add(dr1);
             }
-            catch
+            catch (Exception ex)
             {
                 throw;
             }
             //SqlCommand pvCommand = new SqlCommand(storedProcedureName, pvConnection);
             //SqlCommand 
-            try
+            DataRow dr2 = dt.NewRow();
+            dr2["Action"] = "Before command";
+            dr2["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr2);
+            ActionedCommand = new SqlCommand(storedProcedureName, pvConnection);
+            DataRow dr3 = dt.NewRow();
+            dr3["Action"] = "After command";
+            dr3["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr3);
+
+            ActionedCommand.CommandType = CommandType.StoredProcedure;
+
+            DataRow dr4 = dt.NewRow();
+            dr4["Action"] = "Before params";
+            dr4["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr4);
+            ActionedCommand.Parameters.Clear();
+            foreach (SqlParameter item in parameters)
             {
-                ActionedCommand = new SqlCommand(storedProcedureName, pvConnection);
-
-                ActionedCommand.CommandType = CommandType.StoredProcedure;
-
-                ActionedCommand.Parameters.Clear();
-                foreach (SqlParameter item in parameters)
-                {
-                    ActionedCommand.Parameters.Add(item);
-                }
-
-                pvConnection.Open();
-                ActionedCommand.ExecuteNonQuery();
+                ActionedCommand.Parameters.Add(item);
             }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
+            DataRow dr5 = dt.NewRow();
+            dr5["Action"] = "After params";
+            dr5["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr5);
+            DataRow dr6 = dt.NewRow();
+            dr6["Action"] = "Opening conn";
+            dr6["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr6);
+            pvConnection.Open();
+            DataRow dr7 = dt.NewRow();
+            dr7["Action"] = "After Opening conn";
+            dr7["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr7);
+            DataRow dr8 = dt.NewRow();
+            dr8["Action"] = "Executing";
+            dr8["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr8);
+            ActionedCommand.ExecuteNonQuery();
+            DataRow dr9 = dt.NewRow();
+            dr9["Action"] = "After execute";
+            dr9["Time"] = DateTime.Now.ToString("hh-mm-ss fff");
+            dt.Rows.Add(dr9);
             //return ActionedCommand;
+            //dt.WriteXml(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + @"\Stats\" + storedProcedureName +
+            //    " " + DateTime.Now.ToString("hh-mm-ss fff") + ".xml");
         }
 
         /// <summary>
@@ -108,7 +154,7 @@ namespace New_Wrapper
             {
                 pvConnection = new SqlConnection(connectionString);
             }
-            catch
+            catch (Exception ex)
             {
                 throw;
             }
@@ -175,12 +221,12 @@ namespace New_Wrapper
         {
             RunStoredProcedure(provider, procedureName);
             DataTable tempData = new DataTable();
-            tempData.Load(ActionedCommand.ExecuteReader(CommandBehavior.CloseConnection));
+            tempData.Load(ActionedCommand.ExecuteReader());
             return tempData;
         }
 
         /// <summary>
-        /// Returns a data table based on running a stored procedure that has a single result set
+        /// Returns a data table based on running a stored proceudre that has a single result set
         /// </summary>
         /// <param name="provider">The connection string for the data source</param>
         /// <param name="parameters">The parameters required by the stored procedure</param>
@@ -190,7 +236,7 @@ namespace New_Wrapper
         {
             RunStoredProcedure(ref parameters, provider, procedureName);
             DataTable tempData = new DataTable();
-            tempData.Load(ActionedCommand.ExecuteReader(CommandBehavior.CloseConnection));
+            tempData.Load(ActionedCommand.ExecuteReader());
             return tempData;
         }
 
@@ -303,24 +349,7 @@ namespace New_Wrapper
         /// <param name="headerRowInSourceProvider">False if header row not included. This will ensure delete first row of data table is deleted.</param>
         /// <param name="passedBulkCopyTimeout">Default server value = 30. Consider increasing for large datasets</param>
         public void InsertBulkData(DataTable passedDataTable, string passedDestinationProvider, string passedDestinationTableName, int passedNumberOfFieldsInLists, ref List<string> passedSourceFieldNames, ref List<string> passedDestinationFieldNames, Boolean headerRowInSourceProvider, int passedBulkCopyTimeout)
-        {
-            InsertBulkData(passedDataTable, passedDestinationProvider, passedDestinationTableName, passedNumberOfFieldsInLists, ref passedSourceFieldNames, ref passedDestinationFieldNames, headerRowInSourceProvider, passedBulkCopyTimeout, 0);
-        }
-
-        /// <summary>
-        /// Import bulk data into SQL database table
-        /// </summary>
-        /// <param name="passedDataTable">Datatable containing the data to insert into SQL database</param>
-        /// <param name="passedDestinationProvider">The SQL dataprovider to the source data to be inserted in to SQL</param>
-        /// <param name="passedDestinationTableName">The name of the destination table name in the SQL Database</param>
-        /// <param name="passedNumberOfFieldsInLists">This nuumber must match the number of items in passed source and desination lists</param>
-        /// <param name="passedSourceFieldNames">The names of the field in the source data that will be inserted in to destination table</param>
-        /// <param name="passedDestinationFieldNames">The corresponding field names in the destination table that will receive the source data</param>
-        /// <param name="headerRowInSourceProvider">False if header row not included. This will ensure delete first row of data table is deleted.</param>
-        /// <param name="passedBulkCopyTimeout">Default server value = 30. Consider increasing for large datasets</param>
-        /// <param name="batchSize">The maximum number of records to be stored at a time - 0 will send all records at once (primarily used where database\server memory is low and the bulk update is large)</param>
-        public void InsertBulkData(DataTable passedDataTable, string passedDestinationProvider, string passedDestinationTableName, int passedNumberOfFieldsInLists, ref List<string> passedSourceFieldNames, ref List<string> passedDestinationFieldNames, Boolean headerRowInSourceProvider, int passedBulkCopyTimeout, int batchSize)
-        {
+            {
             try
             {
                 DataTable dtSourceData = passedDataTable;
@@ -331,13 +360,10 @@ namespace New_Wrapper
                     {
                         sqlBulkCopy.BulkCopyTimeout = passedBulkCopyTimeout;
                         sqlBulkCopy.DestinationTableName = passedDestinationTableName;
-                        if (batchSize > 0)
-                        {
-                            sqlBulkCopy.BatchSize = batchSize;
-                        }
                         for (int i = 0; i < passedNumberOfFieldsInLists; i++)//20/07/2016 removed the "-1" from int i = 0; i < passedNumberOfFieldsInLists - 1; i++
                         {
                             sqlBulkCopy.ColumnMappings.Add(passedSourceFieldNames[i].ToString(), passedDestinationFieldNames[i].ToString());
+                            System.Diagnostics.Debug.WriteLine(passedSourceFieldNames[i].ToString() + ":" + passedDestinationFieldNames[i].ToString());
                         }
                         con.Open();
                         sqlBulkCopy.WriteToServer(dtSourceData);
@@ -350,6 +376,83 @@ namespace New_Wrapper
                 throw new Exception("An error occurred in the bulk data import:\r\nError Message - " + ex.Message + "\r\nStack Trace - " + ex.StackTrace);
             }
         }
+
+
+
+
+        /// <summary> Added 30/01/2019
+        /// As above but as a transaction to rollback
+        /// </summary>
+        /// <param name="passedDataTable"></param>
+        /// <param name="passedDestinationProvider"></param>
+        /// <param name="passedDestinationTableName"></param>
+        /// <param name="passedNumberOfFieldsInLists"></param>
+        /// <param name="passedSourceFieldNames"></param>
+        /// <param name="passedDestinationFieldNames"></param>
+        /// <param name="headerRowInSourceProvider"></param>
+        /// <param name="passedBulkCopyTimeout"></param>
+         /// <param name="passedBatchSize"></param>
+        public void InsertBulkDataBatch(DataTable passedDataTable, string passedDestinationProvider, string passedDestinationTableName, int passedNumberOfFieldsInLists, ref List<string> passedSourceFieldNames, ref List<string> passedDestinationFieldNames, Boolean headerRowInSourceProvider, int passedBulkCopyTimeout, int passedBatchSize)
+        {
+            try
+            {
+                DataTable dtSourceData = passedDataTable;
+                string consString = passedDestinationProvider;
+                using (SqlConnection con = new SqlConnection(consString))
+                {
+                    con.Open();
+                    using (SqlTransaction transaction = con.BeginTransaction())
+                    {
+                        using (SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(con, SqlBulkCopyOptions.Default, transaction))
+                        {
+                            sqlBulkCopy.BulkCopyTimeout = passedBulkCopyTimeout;
+                            sqlBulkCopy.BatchSize = passedBatchSize;
+                            sqlBulkCopy.DestinationTableName = passedDestinationTableName;
+                            #region delete after tests 01/02/2019
+                            sqlBulkCopy.NotifyAfter = passedBatchSize;
+                            sqlBulkCopy.SqlRowsCopied += new SqlRowsCopiedEventHandler(OnSQLRowsCopied);
+                            #endregion
+
+                            for (int i = 0; i < passedNumberOfFieldsInLists; i++)//20/07/2016 removed the "-1" from int i = 0; i < passedNumberOfFieldsInLists - 1; i++
+                            {
+                                sqlBulkCopy.ColumnMappings.Add(passedSourceFieldNames[i].ToString(), passedDestinationFieldNames[i].ToString());
+                            }
+
+                            try
+                            {
+                                sqlBulkCopy.WriteToServer(dtSourceData);
+                                transaction.Commit();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(ex.Message);
+                                transaction.Rollback();
+                            }
+                            finally
+                            {
+                                con.Close();
+                            }
+                        }
+                    }
+                }
+
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred in the bulk data import:\r\nError Message - " + ex.Message + "\r\nStack Trace - " + ex.StackTrace);
+            }
+        }
+
+        private static void OnSQLRowsCopied(object Sender,SqlRowsCopiedEventArgs e)
+        {
+            Debug.WriteLine("Rows: " + e.RowsCopied + " - " + DateTime.Now.ToString("hh:mm:ss:fff"));
+         // System.Diagnostics.Debug.WriteLine("Rows: " + e.RowsCopied + " - " + DateTime.Now.ToString("hh-mm-ss fff"));
+        }
+
 
         /// <summary>
         /// Import bulk data into SQL database table
@@ -365,7 +468,7 @@ namespace New_Wrapper
             {
                 columnNames.Add(col.ColumnName.ToString());
             }
-            InsertBulkData(passedData, destinationProvider, destinationTable, columnNames.Count, ref columnNames, ref columnNames, false, 20000);
+            InsertBulkData(passedData, destinationProvider, destinationTable, columnNames.Count, ref columnNames, ref columnNames, false, 30);
         }
 
         /// <summary>
@@ -434,12 +537,11 @@ namespace New_Wrapper
         #endregion
 
         #region Convert CSV to data table
-
         /// <summary>
-        /// Converts a CSV to a data table
+        /// 
         /// </summary>
-        /// <param name="fileToImport">The full path to the csv file</param>
-        /// <param name="includesHeader">Whether the CSV includes a header</param>
+        /// <param name="fileToImport"></param>
+        /// <param name="includesHeader"></param>
         /// <returns></returns>
         public DataTable ReturnCSVAsDataTable(string fileToImport, Boolean includesHeader)
         {
@@ -466,7 +568,53 @@ namespace New_Wrapper
         #endregion
 
         #region Convert Excel sheet to data table
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fileToImport"></param>
+        /// <returns></returns>
+        public DataTable ReturnExcelAsDataTable(string fileToImport)
+        {
+            DataTable dt = new DataTable();
+            string sampleProvider = string.Empty;
+            string selectQuery = string.Empty;
+            switch (System.IO.Path.GetExtension(fileToImport))
+            {
+                case ".xls":
+                    sampleProvider = @"Provider = Microsoft.jet.oledb.4.0; Data Source = " + fileToImport + "; Extended Properties = 'Excel 8.0; HDR = Yes; IMEX = 1'"; //+ Properties.Settings.Default.RootPath + @"\Book1.xls; Extended Properties = 'Excel 8.0; HDR = Yes; IMEX = 1'";
+                    selectQuery = "SELECT * FROM [SHEET1$]";
+                    break;
+                case ".xlsx":
+                    sampleProvider = @"Provider = Microsoft.ACE.oledb.12.0; Data Source = " + fileToImport + "; Extended Properties = 'Excel 12.0 Xml; HDR = Yes'"; //+ Properties.Settings.Default.RootPath + @"\Book1.xls; Extended Properties = 'Excel 8.0; HDR = Yes; IMEX = 1'";
+                    selectQuery = "SELECT * FROM [SHEET1$]";
+                    break;
+                case ".csv":
+                    sampleProvider = @"Provider=Microsoft.Jet.OLEDB.4.0;Data Source = " + System.IO.Path.GetDirectoryName(fileToImport) + "; Extended Properties ='text; HDR = Yes; FMT = Delimited'";
+                    selectQuery = "SELECT * FROM [" + System.IO.Path.GetFileName(fileToImport) + "]";
+                    break;
+                case ".xml":
+                    break;
+                default:
+                    return dt;
+            }
+            try
+            {
+                OleDbConnection myConnection;
+                OleDbDataAdapter myCommand;
+                myConnection = new OleDbConnection(sampleProvider);
+                myCommand = new OleDbDataAdapter(selectQuery, myConnection);
+                myCommand.TableMappings.Add("Table", "MainTable");
+                myCommand.Fill(dt);
+                myConnection.Close();
+                return dt;
 
+            }
+            catch
+            {
+                return dt;
+            }
+
+        }
         #endregion
 
         #region Write datatable to Excel
@@ -524,8 +672,9 @@ namespace New_Wrapper
         /// <param name="maxPerBatch"></param>
         /// <param name="excludeBatchNumber"></param>
         /// <param name="delimiter"></param>
-        public void GenerateCSV(ref DataTable data, string path, string prefix, int maxPerBatch, Boolean excludeBatchNumber, string delimiter)
+        public string GenerateCSV(ref DataTable data, string path, string prefix, int maxPerBatch, Boolean excludeBatchNumber, string delimiter)
         {
+            string namegen = "";
             int counter = 1;
             string suffix = Environment.UserName + DateTime.Now.ToString("ddMMyyyyHHmm");
             DataColumn col = new DataColumn();
@@ -540,6 +689,7 @@ namespace New_Wrapper
                 if (batchRow == 1)
                 {
                     string fileName = prefix + suffix + counter + ".csv";
+                    namegen = fileName;
                     myWriter = new System.IO.StreamWriter(path + @"\" + fileName);
                     StringBuilder row = new StringBuilder();
                     foreach (DataColumn headerCol in data.Columns)
@@ -588,8 +738,100 @@ namespace New_Wrapper
                 }
             }
             myWriter.Close();
+            return namegen;
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="path"></param>
+        /// <param name="prefix"></param>
+        /// <param name="maxPerBatch"></param>
+        /// <param name="excludeBatchNumber"></param>
+        /// <param name="delimiter"></param>
+        /// <param name="ignore"></param>
+        /// <param name="addConsec"></param>
+        /// <returns></returns>
+        public string GenerateCSVRemoveColumn(ref DataTable data, string path, string prefix, int maxPerBatch, Boolean excludeBatchNumber, string delimiter,string ignore,bool addConsec=true)
+        {
+            string namegen = "";
+            int counter = 1;
+            string suffix = Environment.UserName + DateTime.Now.ToString("ddMMyyyyHHmm");
+            DataColumn col = new DataColumn();
+            col.ColumnName = "BatchNumber";
+            data.Columns.Add(col);
+            int batchRow = 1;
+            System.IO.StreamWriter myWriter = null;
 
+            if (addConsec)
+            {
+                data.Columns.Add("CONSEC");
+            }
+
+            foreach (DataRow item in data.Rows)
+            {
+                //Create a new file and write the header as required
+                if (batchRow == 1)
+                {
+                    string fileName = prefix + suffix + counter + ".csv";
+                    namegen = fileName;
+                    myWriter = new System.IO.StreamWriter(path + @"\" + fileName);
+                    StringBuilder row = new StringBuilder();
+                    foreach (DataColumn headerCol in data.Columns)
+                    {
+                        if ((headerCol.ColumnName == "BatchNumber" && excludeBatchNumber == true)||
+                             (headerCol.ColumnName == ignore)|| headerCol.ColumnName=="CONSEC")
+                        {
+                            //Ignore the column
+                        }
+                        else
+                        {
+                            if (string.IsNullOrEmpty(row.ToString()))
+                            {
+                                row.Append(headerCol.ColumnName);
+                            }
+                            else
+                            {
+                                row.Append(delimiter + headerCol.ColumnName);
+                            }
+                        }
+                    }
+                    
+                    myWriter.WriteLine(row);
+                }
+                List<string> rowData = new List<string>();
+                for (int colIndex = 0; colIndex < item.ItemArray.Count(); colIndex++)
+                {
+                    if ((data.Columns[colIndex].ColumnName == "BatchNumber" && excludeBatchNumber == true) || 
+                        data.Columns[colIndex].ColumnName ==ignore || data.Columns[colIndex].ColumnName == "CONSEC")
+                    {
+                        //Ignore the column
+                    }
+                    else
+                    {
+                        rowData.Add(item[colIndex].ToString());
+                    }
+                }
+                string builtRow = string.Join(delimiter, rowData.ToArray());
+                myWriter.WriteLine(builtRow);
+                item.BeginEdit();
+                item["BatchNumber"] = prefix + " " + suffix + counter;
+                if (addConsec)
+                {
+                    item["CONSEC"] = counter;
+                }
+                item.EndEdit();
+                batchRow++;
+                if (batchRow > maxPerBatch)
+                {
+                    myWriter.Close();
+                    batchRow = 1;
+                    counter++;
+                }
+            }
+            myWriter.Close();
+            return namegen;
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -606,15 +848,12 @@ namespace New_Wrapper
         #endregion
 
         #region Transform data show row as table
-
         /// <summary>
-        /// Coverts a single data row into a table 
+        /// 
         /// </summary>
-        /// <param name="rowToConvert">The data row to be converted</param>
-        /// <param name="headerForFieldColumn">The name to be used for column which will store the original column 
-        /// name</param>
-        /// <param name="headerForValueColumn">The name to be used for column which will store the value in the original
-        /// column</param>
+        /// <param name="rowToConvert"></param>
+        /// <param name="headerForFieldColumn"></param>
+        /// <param name="headerForValueColumn"></param>
         /// <returns></returns>
         public DataTable ConvertRowToTable(DataRow rowToConvert, string headerForFieldColumn, string headerForValueColumn)
         {
@@ -634,13 +873,12 @@ namespace New_Wrapper
         }
 
         #endregion
-
         /// <summary>
-        /// A global OLE database connection
+        /// 
         /// </summary>
         public static OleDbConnection m_connection;
         /// <summary>
-        /// A global SQL database connection
+        /// 
         /// </summary>
         public static SqlConnection m_SQLconnection;
         OleDbDataAdapter m_localAdapter;
@@ -1098,9 +1336,7 @@ namespace New_Wrapper
                     SqlDataAdapter newAdapter = new SqlDataAdapter();
                     SqlConnection newConnection = new SqlConnection(provider);
                     newConnection.Open();
-                    SqlCommand command = new SqlCommand(updateQuery, newConnection);
-                    command.CommandTimeout = 0;
-                    newAdapter.UpdateCommand = command;
+                    newAdapter.UpdateCommand = new SqlCommand(updateQuery, newConnection);
                     newAdapter.UpdateCommand.ExecuteNonQuery();
                 }
                 catch (Exception ex)
@@ -1155,11 +1391,11 @@ namespace New_Wrapper
                 m_connection.Close();
             }
         }
-
         /// <summary>
-        /// Closes the connection to the data source
+        /// 
         /// </summary>
-        /// <param name="dispose">Whether the connection should also be disposed</param>
+        /// <param name="dispose"></param>
+
         public void CloseConnection(bool dispose)
         {
             if (dispose == false)
